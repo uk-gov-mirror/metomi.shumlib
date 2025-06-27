@@ -27,8 +27,8 @@
 # USAGE:  (Note - must be run from the toplevel Shumlib directory!)
 #   scripts/meto_install_shumlib.sh [xc40|x86|ex1a]
 #
-# This script was used to install shumlib version 2024.03.1
-# and was intended for use with the UM at UM 13.5
+# This script was used to install shumlib version 2024.11.1
+# and was intended for use with the UM at UM 13.7
 #
 
 set -eu
@@ -36,7 +36,7 @@ set -eu
 RUN_SUCCESS=0
 
 # set up no IEEE list
-NO_IEEE_LIST=${NO_IEEE_LIST:-"xc40_haswell_gnu_4.9.1 xc40_ivybridge_gnu_4.9.1 x86_gnu_11.2.0"}
+NO_IEEE_LIST=${NO_IEEE_LIST:-"xc40_haswell_gnu_4.9.1 xc40_ivybridge_gnu_4.9.1 x86_gnu_11.2.0 azspice_gnu_12.2"}
 
 # Ensure directory is correct
 CANONICAL_DIR=$(dirname "$0")
@@ -175,6 +175,29 @@ function build_openmp_onoff {
 
 }
 
+# AZ SPICE GNU 12.2
+THIS="azspice_gnu_12.2"
+if [ "$PLATFORM" == "azspice" ] || [ "$PLATFORM" == $THIS ] ; then
+  if [[ $(gcc -dumpversion | awk -F'.' '{print $1}') -gt 8 ]] ; then
+    (
+    module use /data/users/spackadmin/spack/modules/linux-rhel9-zen2
+    module load gcc/12.2.0-gcc-12.2.0-elnqzkg
+    module load mpich/4.2.3-gcc-12.2.0-vqupwpn
+    unset SHUM_TMPDIR
+    CONFIG=meto-azspice-gfortran-gcc
+    LIBDIR=$BUILD_DESTINATION/azspice-gfortran-$(gfortran -dumpversion)-gcc-$(gcc -dumpversion)
+    build_openmp_onoff $CONFIG "$LIBDIR" all_libs
+    )
+    if [ $? -ne 0 ] ; then
+        >&2 echo "Error compiling for $THIS"
+        exit 1
+    fi
+  else
+    >&2 echo "SKIPPING $THIS as GCC version older than 8"
+  fi
+  RUN_SUCCESS=1
+fi
+
 # Intel/GCC (ifort 16)
 THIS="x86_ifort_16.0_gcc"
 if [ "$PLATFORM" == "x86" ] || [ "$PLATFORM" == $THIS ] ; then
@@ -185,6 +208,47 @@ if [ "$PLATFORM" == "x86" ] || [ "$PLATFORM" == $THIS ] ; then
     unset SHUM_TMPDIR
     CONFIG=meto-x86-ifort15+-gcc
     LIBDIR=$BUILD_DESTINATION/meto-x86-ifort-16.0.1-gcc-4.4.7
+    build_openmp_onoff $CONFIG "$LIBDIR" all_libs
+    )
+    if [ $? -ne 0 ] ; then
+        >&2 echo "Error compiling for $THIS"
+        exit 1
+    fi
+    RUN_SUCCESS=1
+fi
+
+# Intel/GCC (ifort 19)
+THIS="x86_ifort_19.0_gcc_11.2"
+if [ "$PLATFORM" == "x86" ] || [ "$PLATFORM" == $THIS ] ; then
+    (
+    source /etc/profile.d/metoffice.d/modules.sh || :
+    module purge
+    module use /project/extrasoftware/modulefiles.rhel7
+    module use /data/users/lfric/software/modulefiles.rhel7
+    module load ifort/19.0_64  # From METO_LINUX family in rose-stem
+    module load gcc/11.2.0
+    unset SHUM_TMPDIR
+    CONFIG=meto-x86-ifort15+-gcc
+    LIBDIR=$BUILD_DESTINATION/meto-x86-ifort-19.0.1-gcc-11.2.0
+    build_openmp_onoff $CONFIG "$LIBDIR" all_libs
+    )
+    if [ $? -ne 0 ] ; then
+        >&2 echo "Error compiling for $THIS"
+        exit 1
+    fi
+    RUN_SUCCESS=1
+fi
+
+THIS="x86_ifort_19.0_gcc_6.1"
+if [ "$PLATFORM" == "x86" ] || [ "$PLATFORM" == $THIS ] ; then
+    (
+    source /etc/profile.d/metoffice.d/modules.sh || :
+    module purge
+    module load ifort/19.0_64  # From METO_LINUX family in rose-stem
+    module load gcc/6.1.0
+    unset SHUM_TMPDIR
+    CONFIG=meto-x86-ifort15+-gcc
+    LIBDIR=$BUILD_DESTINATION/meto-x86-ifort-19.0.1-gcc-6.1.0
     build_openmp_onoff $CONFIG "$LIBDIR" all_libs
     )
     if [ $? -ne 0 ] ; then
